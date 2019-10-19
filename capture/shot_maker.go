@@ -11,12 +11,14 @@ import (
 )
 
 type ChromeShotMaker struct {
-	outputFormat  string
-	outputQuality int
-	conn          *rpcc.Conn
+	conn *rpcc.Conn
 }
 
-func NewChromeShotMaker(ctx context.Context, addr, format string, quality int) (*ChromeShotMaker, error) {
+func (c *ChromeShotMaker) Close() error {
+	return c.conn.Close()
+}
+
+func NewChromeShotMaker(ctx context.Context, addr string) (*ChromeShotMaker, error) {
 	devt := devtool.New(addr)
 	pt, err := devt.Get(ctx, devtool.Page)
 	if err != nil {
@@ -29,10 +31,10 @@ func NewChromeShotMaker(ctx context.Context, addr, format string, quality int) (
 	if err != nil {
 		return nil, fmt.Errorf(`failed to dial web socket debugger url: [url: %s, error: %w]`, pt.WebSocketDebuggerURL, err)
 	}
-	return &ChromeShotMaker{outputFormat: format, outputQuality: quality, conn: conn}, nil
+	return &ChromeShotMaker{conn: conn}, nil
 }
 
-func (c *ChromeShotMaker) MakeShot(ctx context.Context, url string) ([]byte, error) {
+func (c *ChromeShotMaker) MakeShot(ctx context.Context, url, format string, quality int) ([]byte, error) {
 	cl := cdp.NewClient(c.conn)
 	frameStopedEventClient, err := cl.Page.FrameStoppedLoading(ctx)
 	if err != nil {
@@ -50,11 +52,11 @@ func (c *ChromeShotMaker) MakeShot(ctx context.Context, url string) ([]byte, err
 		return nil, fmt.Errorf(`failed to receive frame stopped event: [error: %w]`, err)
 	}
 	screenshot, err := cl.Page.CaptureScreenshot(ctx, page.NewCaptureScreenshotArgs().
-		SetFormat(c.outputFormat).
-		SetQuality(c.outputQuality))
+		SetFormat(format).
+		SetQuality(quality))
 	if err != nil {
 		return nil, fmt.Errorf(`failed to capture screenshot [url: %s, format: %s, quality: %d, error: %w]`,
-			url, c.outputFormat, c.outputQuality, err)
+			url, format, quality, err)
 	}
 	return screenshot.Data, nil
 }
