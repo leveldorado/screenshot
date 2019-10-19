@@ -20,6 +20,13 @@ type ScreenshotMetadata struct {
 	FileID    string    `json:"file_id" bson:"file_id"`
 	CreatedAt time.Time `json:"created_at" bson:"created_at"`
 }
+type ScreenshotsMetadataByVersionDesc []ScreenshotMetadata
+
+func (list ScreenshotsMetadataByVersionDesc) Len() int      { return len(list) }
+func (list ScreenshotsMetadataByVersionDesc) Swap(i, j int) { list[i], list[j] = list[j], list[i] }
+func (list ScreenshotsMetadataByVersionDesc) Less(i, j int) bool {
+	return list[i].Version > list[j].Version
+}
 
 type MongodbScreenshotMetadataRepo struct {
 	db                       *mongo.Database
@@ -66,4 +73,26 @@ func (m *MongodbScreenshotMetadataRepo) Save(ctx context.Context, doc *Screensho
 		return fmt.Errorf(`failed to insert doc to metadata collection: [doc: %+v, error: %w]`, doc, err)
 	}
 	return nil
+}
+
+func (m *MongodbScreenshotMetadataRepo) Get(ctx context.Context, url string, version int) (ScreenshotMetadata, error) {
+	var doc ScreenshotMetadata
+	q := bson.M{"url": url, "version": version}
+	if err := m.db.Collection(m.metadataCollection).FindOne(ctx, q).Decode(&doc); err != nil {
+		return ScreenshotMetadata{}, fmt.Errorf(`failed to find document: [q: %+v, collection_name: %s, error: %w]`, q, m.metadataCollection, err)
+	}
+	return doc, nil
+}
+
+func (m *MongodbScreenshotMetadataRepo) GetAllVersions(ctx context.Context, url string) ([]ScreenshotMetadata, error) {
+	var list []ScreenshotMetadata
+	q := bson.M{"url": url}
+	res, err := m.db.Collection(m.metadataCollection).Find(ctx, q)
+	if err != nil {
+		return nil, fmt.Errorf(`failed to find dockuments: [q: %+v, collection_name: %s, error: %w]`, q, m.metadataCollection, err)
+	}
+	if err = res.All(ctx, &list); err != nil {
+		return nil, fmt.Errorf(`failed to decode result: [error: %w]`, err)
+	}
+	return list, nil
 }

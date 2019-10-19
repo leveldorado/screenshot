@@ -31,3 +31,11 @@ func (m *MongodbGridFSFileRepo) Save(ctx context.Context, file io.Reader, fileID
 	}
 	return nil
 }
+
+func (m *MongodbGridFSFileRepo) Get(ctx context.Context, fileID string) (io.Reader, error) {
+	st, err := m.bucket.OpenDownloadStream(fileID)
+	if err != nil {
+		return nil, fmt.Errorf(`failed to open download stream: [file_id: %s, error: %w]`, fileID, err)
+	}
+	return st, nil
+}
