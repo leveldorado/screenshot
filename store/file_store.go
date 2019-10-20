@@ -29,10 +29,11 @@ func (m *MongodbGridFSFileRepo) Save(ctx context.Context, file io.Reader, fileID
 	if _, err = io.Copy(st, file); err != nil {
 		return fmt.Errorf(`failed to copy file to gridfs upload stream: [error: %w]`, err)
 	}
+	st.Close()
 	return nil
 }
 
-func (m *MongodbGridFSFileRepo) Get(ctx context.Context, fileID string) (io.Reader, error) {
+func (m *MongodbGridFSFileRepo) Get(ctx context.Context, fileID string) (io.ReadCloser, error) {
 	st, err := m.bucket.OpenDownloadStream(fileID)
 	if err != nil {
 		return nil, fmt.Errorf(`failed to open download stream: [file_id: %s, error: %w]`, fileID, err)

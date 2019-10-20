@@ -1,8 +1,10 @@
 package capture
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/mafredri/cdp"
 	"github.com/mafredri/cdp/devtool"
@@ -34,7 +36,7 @@ func NewChromeShotMaker(ctx context.Context, addr string) (*ChromeShotMaker, err
 	return &ChromeShotMaker{conn: conn}, nil
 }
 
-func (c *ChromeShotMaker) MakeShot(ctx context.Context, url, format string, quality int) ([]byte, error) {
+func (c *ChromeShotMaker) MakeShot(ctx context.Context, url, format string, quality int) (io.Reader, error) {
 	cl := cdp.NewClient(c.conn)
 	frameStopedEventClient, err := cl.Page.FrameStoppedLoading(ctx)
 	if err != nil {
@@ -58,5 +60,6 @@ func (c *ChromeShotMaker) MakeShot(ctx context.Context, url, format string, qual
 		return nil, fmt.Errorf(`failed to capture screenshot [url: %s, format: %s, quality: %d, error: %w]`,
 			url, format, quality, err)
 	}
-	return screenshot.Data, nil
+	buff := bytes.NewBuffer(screenshot.Data)
+	return buff, nil
 }
