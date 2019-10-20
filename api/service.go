@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -80,4 +81,38 @@ func (s *DefaultService) makeShot(ctx context.Context, url string, respChan chan
 		return
 	}
 	respChan <- ResponseItem{URL: url, Success: true}
+}
+
+func (s *DefaultService) GetScreenshot(ctx context.Context, url string, version int) (file io.Reader, contentType string, err error) {
+	var m store.Metadata
+	if version == 0 {
+		versions, err := s.mg.GetAllVersions(ctx, url)
+		if err != nil {
+			return nil, "", fmt.Errorf(`failed to get screen shot versions: [url: %s, error: %w]`, url, err)
+		}
+		if len(versions) == 0 {
+			return nil, "", store.ErrNotFound{}
+		}
+		sort.Sort(store.MetadataByVersionDesc(versions))
+		m = versions[0]
+	} else {
+		m, err = s.mg.Get(ctx, url, version)
+		if err != nil {
+			return nil, "", fmt.Errorf(`failed to get screenshot metadata: [url: %s, version: %d, error: %w]`, url, version, err)
+		}
+	}
+	file, err = s.fg.Get(ctx, m.FileID)
+	if err != nil {
+		return nil, "", fmt.Errorf(`failed to get file: [file_id: %s, error: %w]`, m.FileID, err)
+	}
+	return file, m.GetContentType(), nil
+}
+
+func (s *DefaultService) GetScreenshotVersions(ctx context.Context, url string) ([]store.Metadata, error) {
+	versions, err := s.mg.GetAllVersions(ctx, url)
+	if err != nil {
+		return nil, fmt.Errorf(`failed to get screen shot versions: [url: %s, error: %w]`, url, err)
+	}
+	sort.Sort(store.MetadataByVersionDesc(versions))
+	return versions, nil
 }

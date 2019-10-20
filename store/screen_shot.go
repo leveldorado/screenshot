@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -9,6 +10,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"gopkg.in/mgo.v2/bson"
 )
+
+type ErrNotFound struct{}
+
+func (ErrNotFound) Error() string { return "Not found" }
 
 type Metadata struct {
 	ID        string    `json:"id" bson:"_id"`
@@ -19,6 +24,11 @@ type Metadata struct {
 	FileID    string    `json:"file_id" bson:"file_id"`
 	CreatedAt time.Time `json:"created_at" bson:"created_at"`
 }
+
+func (m Metadata) GetContentType() string {
+	return fmt.Sprintf(`image/%s`, m.Format)
+}
+
 type MetadataByVersionDesc []Metadata
 
 func (list MetadataByVersionDesc) Len() int      { return len(list) }
@@ -77,7 +87,11 @@ func (m *MongodbMetadataRepo) Save(ctx context.Context, doc *Metadata) error {
 func (m *MongodbMetadataRepo) Get(ctx context.Context, url string, version int) (Metadata, error) {
 	var doc Metadata
 	q := bson.M{"url": url, "version": version}
-	if err := m.db.Collection(m.metadataCollection).FindOne(ctx, q).Decode(&doc); err != nil {
+	err := m.db.Collection(m.metadataCollection).FindOne(ctx, q).Decode(&doc)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return Metadata{}, ErrNotFound{}
+	}
+	if err != nil {
 		return Metadata{}, fmt.Errorf(`failed to find document: [q: %+v, collection_name: %s, error: %w]`, q, m.metadataCollection, err)
 	}
 	return doc, nil
