@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/labstack/echo/middleware"
 
 	"github.com/labstack/echo"
 
@@ -20,7 +23,32 @@ type service interface {
 }
 
 type HTTPHandler struct {
-	s service
+	server  *echo.Echo
+	s       service
+	address string
+}
+
+func (h *HTTPHandler) Run(ctx context.Context) error {
+	h.server = echo.New()
+	h.server.Use(middleware.Recover())
+	h.registerEndpoints(h.server)
+	go func() {
+		if err := h.server.Start(h.address); err != nil {
+			log.Println(fmt.Sprintf(`failed to start http server on address %s with error: %s`, h.address, err))
+		}
+		log.Println("http server shutdown")
+	}()
+	return nil
+}
+
+func (h *HTTPHandler) Stop(ctx context.Context) error {
+	return h.server.Shutdown(ctx)
+}
+
+func (h *HTTPHandler) registerEndpoints(e *echo.Echo) {
+	e.POST("/api/v1/screenshot", h.makeShots)
+	e.GET("/api/v1/screenshot", h.getScreenshot)
+	e.GET("/api/v1/screenshot/versions", h.getScreenshotVersions)
 }
 
 type MakeShotsRequest struct {
@@ -31,55 +59,48 @@ type ErrorResponse struct {
 	Message string
 }
 
-func (h HTTPHandler) makeShots(ctx echo.Context) {
+func (h HTTPHandler) makeShots(ctx echo.Context) error {
 	req := MakeShotsRequest{}
 	if err := ctx.Bind(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: err.Error()})
-		return
+		return ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: err.Error()})
 	}
 	response := h.s.MakeShots(ctx.Request().Context(), req.URLs)
-	ctx.JSON(http.StatusOK, response)
+	return ctx.JSON(http.StatusOK, response)
 }
 
-func (h HTTPHandler) getScreenshot(ctx echo.Context) {
+func (h HTTPHandler) getScreenshot(ctx echo.Context) error {
 	url := ctx.QueryParam("url")
 	if url == "" {
-		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "missing required query parameter url"})
-		return
+		return ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "missing required query parameter url"})
 	}
 	var version int
 	versionParam := ctx.QueryParam("version")
 	if versionParam != "" {
 		v, err := strconv.ParseInt(versionParam, 10, 64)
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: fmt.Sprintf(`invalid parameter version: [version: %s, error: %s]`, versionParam, err)})
-			return
+			return ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: fmt.Sprintf(`invalid parameter version: [version: %s, error: %s]`, versionParam, err)})
 		}
 		version = int(v)
 	}
 	file, contentType, err := h.s.GetScreenshot(ctx.Request().Context(), url, version)
 	if errors.As(err, &store.ErrNotFound{}) {
-		ctx.JSON(http.StatusNotFound, ErrorResponse{Message: "screenshot not found"})
-		return
+		return ctx.JSON(http.StatusNotFound, ErrorResponse{Message: "screenshot not found"})
 	}
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: err.Error()})
-		return
+		return ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: err.Error()})
 	}
-	ctx.Stream(http.StatusOK, contentType, file)
-	file.Close()
+	defer file.Close()
+	return ctx.Stream(http.StatusOK, contentType, file)
 }
 
-func (h HTTPHandler) getScreenshotVersions(ctx echo.Context) {
+func (h HTTPHandler) getScreenshotVersions(ctx echo.Context) error {
 	url := ctx.QueryParam("url")
 	if url == "" {
-		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "missing required query parameter url"})
-		return
+		return ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "missing required query parameter url"})
 	}
 	resp, err := h.s.GetScreenshotVersions(ctx.Request().Context(), url)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: err.Error()})
-		return
+		return ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: err.Error()})
 	}
-	ctx.JSON(http.StatusOK, resp)
+	return ctx.JSON(http.StatusOK, resp)
 }

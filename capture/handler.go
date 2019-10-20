@@ -38,9 +38,25 @@ type QueueSubscriptionHandler struct {
 	requestTimeout time.Duration
 }
 
+func NewQueueSubscriptionHandler(s service, q subscriberReplier, requestTimeout time.Duration) *QueueSubscriptionHandler {
+	return &QueueSubscriptionHandler{
+		s:              s,
+		q:              q,
+		requestTimeout: requestTimeout,
+	}
+}
+
 const subscriptionGroupCapture = "capture"
 
-func (h *QueueSubscriptionHandler) SubscribeTopics(ctx context.Context) error {
+func (h *QueueSubscriptionHandler) Run(ctx context.Context) error {
+	return h.subscribeTopics(ctx)
+}
+
+func (h *QueueSubscriptionHandler) Stop(ctx context.Context) error {
+	return nil
+}
+
+func (h *QueueSubscriptionHandler) subscribeTopics(ctx context.Context) error {
 	if err := h.subscribeTopic(ctx, ShotRequestTopic, h.makeShotAndSave); err != nil {
 		return fmt.Errorf(`failed to subscribe shot request topic: [error: %w]`, err)
 	}

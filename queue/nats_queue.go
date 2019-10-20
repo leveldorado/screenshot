@@ -72,6 +72,7 @@ func (n *NATS) consumeSubscription(ctx context.Context, topic string, sub *nats.
 		for {
 			msg, err := sub.NextMsgWithContext(ctx)
 			if err != nil {
+				//TODO pass logger as dependence
 				log.Println(fmt.Sprintf(`failed get next message for topic %s: with error: %s`, topic, err))
 				close(c)
 				return
