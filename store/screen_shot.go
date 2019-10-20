@@ -6,12 +6,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-
 	"go.mongodb.org/mongo-driver/mongo"
 	"gopkg.in/mgo.v2/bson"
 )
 
-type ScreenshotMetadata struct {
+type Metadata struct {
 	ID        string    `json:"id" bson:"_id"`
 	Url       string    `json:"url" bson:"url"`
 	Format    string    `json:"format"`
@@ -20,25 +19,25 @@ type ScreenshotMetadata struct {
 	FileID    string    `json:"file_id" bson:"file_id"`
 	CreatedAt time.Time `json:"created_at" bson:"created_at"`
 }
-type ScreenshotsMetadataByVersionDesc []ScreenshotMetadata
+type MetadataByVersionDesc []Metadata
 
-func (list ScreenshotsMetadataByVersionDesc) Len() int      { return len(list) }
-func (list ScreenshotsMetadataByVersionDesc) Swap(i, j int) { list[i], list[j] = list[j], list[i] }
-func (list ScreenshotsMetadataByVersionDesc) Less(i, j int) bool {
+func (list MetadataByVersionDesc) Len() int      { return len(list) }
+func (list MetadataByVersionDesc) Swap(i, j int) { list[i], list[j] = list[j], list[i] }
+func (list MetadataByVersionDesc) Less(i, j int) bool {
 	return list[i].Version > list[j].Version
 }
 
-type MongodbScreenshotMetadataRepo struct {
+type MongodbMetadataRepo struct {
 	db                       *mongo.Database
 	metadataCollection       string
 	versionCounterCollection string
 }
 
-func NewMongodbScreenshotMetadataRepo(cl *mongo.Client, database, metadataCollection, versionCounterCollection string) *MongodbScreenshotMetadataRepo {
-	return &MongodbScreenshotMetadataRepo{db: cl.Database(database), metadataCollection: metadataCollection, versionCounterCollection: versionCounterCollection}
+func NewMongodbMetadataRepo(cl *mongo.Client, database, metadataCollection, versionCounterCollection string) *MongodbMetadataRepo {
+	return &MongodbMetadataRepo{db: cl.Database(database), metadataCollection: metadataCollection, versionCounterCollection: versionCounterCollection}
 }
 
-func (m *MongodbScreenshotMetadataRepo) EnsureIndexes(ctx context.Context) error {
+func (m *MongodbMetadataRepo) EnsureIndexes(ctx context.Context) error {
 	indexes := []mongo.IndexModel{{
 		Keys: bson.D{{
 			Name:  "url",
@@ -51,7 +50,7 @@ func (m *MongodbScreenshotMetadataRepo) EnsureIndexes(ctx context.Context) error
 	return nil
 }
 
-func (m *MongodbScreenshotMetadataRepo) Save(ctx context.Context, doc *ScreenshotMetadata) error {
+func (m *MongodbMetadataRepo) Save(ctx context.Context, doc *Metadata) error {
 	versionDoc := struct {
 		ID      string `bson:"_id"`
 		Version int    `bson:"version"`
@@ -75,17 +74,17 @@ func (m *MongodbScreenshotMetadataRepo) Save(ctx context.Context, doc *Screensho
 	return nil
 }
 
-func (m *MongodbScreenshotMetadataRepo) Get(ctx context.Context, url string, version int) (ScreenshotMetadata, error) {
-	var doc ScreenshotMetadata
+func (m *MongodbMetadataRepo) Get(ctx context.Context, url string, version int) (Metadata, error) {
+	var doc Metadata
 	q := bson.M{"url": url, "version": version}
 	if err := m.db.Collection(m.metadataCollection).FindOne(ctx, q).Decode(&doc); err != nil {
-		return ScreenshotMetadata{}, fmt.Errorf(`failed to find document: [q: %+v, collection_name: %s, error: %w]`, q, m.metadataCollection, err)
+		return Metadata{}, fmt.Errorf(`failed to find document: [q: %+v, collection_name: %s, error: %w]`, q, m.metadataCollection, err)
 	}
 	return doc, nil
 }
 
-func (m *MongodbScreenshotMetadataRepo) GetAllVersions(ctx context.Context, url string) ([]ScreenshotMetadata, error) {
-	var list []ScreenshotMetadata
+func (m *MongodbMetadataRepo) GetAllVersions(ctx context.Context, url string) ([]Metadata, error) {
+	var list []Metadata
 	q := bson.M{"url": url}
 	res, err := m.db.Collection(m.metadataCollection).Find(ctx, q)
 	if err != nil {
