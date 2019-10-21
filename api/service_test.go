@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"io/ioutil"
+	"strings"
 	"testing"
 	"time"
 
@@ -55,9 +57,32 @@ func (m *mockFileGetter) Get(ctx context.Context, fileID string) (io.ReadCloser,
 
 func TestDefaultService_GetScreenshot(t *testing.T) {
 	mg := &mockMetadataGetter{}
-	list := []store.Metadata{{FileID: uuid.New().String(), Format: "jpeg", Version: 1}, {FileID: uuid.New().String(), Format: "jpeg", Version: 1}}
+	latest := store.Metadata{FileID: uuid.New().String(), Format: "jpeg", Version: 2}
+	list := []store.Metadata{{FileID: uuid.New().String(), Format: "png", Version: 1}, latest}
 	url := uuid.New().String()
-	mg.On("GetAllVersions", mock.Anything)
+	mg.On("GetAllVersions", mock.Anything, url).Return(list, nil)
+	fg := &mockFileGetter{}
+	file := ioutil.NopCloser(strings.NewReader(uuid.New().String()))
+	fg.On("Get", mock.Anything, latest.FileID).Return(file, nil)
+	s := NewDefaultService(fg, mg, nil, 0)
+	respFile, contentType, err := s.GetScreenshot(context.Background(), url, 0)
+	require.NoError(t, err)
+	require.Equal(t, file, respFile)
+	require.Equal(t, "image/jpeg", contentType)
+	mg.AssertExpectations(t)
+	fg.AssertExpectations(t)
+}
+
+func TestDefaultService_GetScreenshotVersions(t *testing.T) {
+	mg := &mockMetadataGetter{}
+	list := []store.Metadata{{FileID: uuid.New().String(), Format: "jpeg", Version: 2}, {FileID: uuid.New().String(), Format: "jpeg", Version: 1}}
+	url := uuid.New().String()
+	mg.On("GetAllVersions", mock.Anything, url).Return(list, nil)
+	s := NewDefaultService(nil, mg, nil, 0)
+	resp, err := s.GetScreenshotVersions(context.Background(), url)
+	require.NoError(t, err)
+	require.Equal(t, list, resp)
+	mg.AssertExpectations(t)
 }
 
 func TestDefaultService_MakeShots(t *testing.T) {

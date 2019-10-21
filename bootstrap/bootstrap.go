@@ -9,8 +9,6 @@ import (
 	"github.com/leveldorado/screenshot/api"
 	"github.com/leveldorado/screenshot/capture"
 	"github.com/leveldorado/screenshot/queue"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type runner interface {
@@ -53,22 +51,18 @@ func Build(ctx context.Context, args []string) (runner, error) {
 }
 
 func getFileAndMetadataStore(ctx context.Context, url string, c config) (*store.MongodbGridFSFileRepo, *store.MongodbMetadataRepo, error) {
-	opt := options.Client().ApplyURI(url)
-	if err := opt.Validate(); err != nil {
-		return nil, nil, fmt.Errorf(`invalid url: [url: %s, error: %w]`, url, err)
-	}
-	cl, err := mongo.NewClient(opt)
+	cl, err := store.BuildMongoClient(ctx, url)
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to create client: [opt: %+v, error: %w]`, opt, err)
-	}
-	if err := cl.Connect(ctx); err != nil {
-		return nil, nil, fmt.Errorf(`failed to connect mongodb: [error: %w]`, err)
+		return nil, nil, fmt.Errorf(`failed to build mongo client: [url: %s, error: %w]`, url, err)
 	}
 	fs, err := store.NewMongodbGridFSFileRepo(ctx, cl, c.Database.Name)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed create mongodb gridfs repo: [database: %s, error: %w]`, c.Database.Name, err)
 	}
 	ms := store.NewMongodbMetadataRepo(cl, c.Database.Name, c.Database.Collections.Metadata, c.Database.Collections.VersionCounter)
+	if err = ms.EnsureIndexes(ctx); err != nil {
+		return nil, nil, fmt.Errorf(`failed to ensure metadata indexes: [error: %w]`, err)
+	}
 	return fs, ms, nil
 }
 

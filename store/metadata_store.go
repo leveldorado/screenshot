@@ -13,6 +13,21 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+func BuildMongoClient(ctx context.Context, addr string) (*mongo.Client, error) {
+	opt := options.Client().ApplyURI(addr)
+	if err := opt.Validate(); err != nil {
+		return nil, fmt.Errorf(`invalid url: [url: %s, error: %w]`, addr, err)
+	}
+	cl, err := mongo.NewClient(opt)
+	if err != nil {
+		return nil, fmt.Errorf(`failed to create client: [opt: %+v, error: %w]`, opt, err)
+	}
+	if err := cl.Connect(ctx); err != nil {
+		return nil, fmt.Errorf(`failed to connect mongodb: [error: %w]`, err)
+	}
+	return cl, nil
+}
+
 type ErrNotFound struct{}
 
 func (ErrNotFound) Error() string { return "Not found" }
@@ -51,10 +66,7 @@ func NewMongodbMetadataRepo(cl *mongo.Client, database, metadataCollection, vers
 
 func (m *MongodbMetadataRepo) EnsureIndexes(ctx context.Context) error {
 	indexes := []mongo.IndexModel{{
-		Keys: bson.D{{
-			Name:  "url",
-			Value: 1,
-		}},
+		Keys: bson.M{"url": 1},
 	}}
 	if _, err := m.db.Collection(m.metadataCollection).Indexes().CreateMany(ctx, indexes); err != nil {
 		return fmt.Errorf(`failed to create metadata indexes: [indexes: %+v, error: %w]`, indexes, err)
@@ -70,9 +82,10 @@ func (m *MongodbMetadataRepo) Save(ctx context.Context, doc *Metadata) error {
 	f := bson.M{"_id": doc.Url}
 	u := bson.M{"$inc": bson.M{"version": 1}}
 	t := true
-	opt := &options.FindOneAndUpdateOptions{Upsert: &t}
-	if err := m.db.Collection(m.versionCounterCollection).FindOneAndUpdate(ctx, f, u, opt).Decode(versionDoc); err != nil {
-		return fmt.Errorf(`failed to generete new version: [filter: %v, update: %v, opt: %+v, error: %w]`, f, u, opt, err)
+	after := options.After
+	opt := &options.FindOneAndUpdateOptions{Upsert: &t, ReturnDocument: &after}
+	if err := m.db.Collection(m.versionCounterCollection).FindOneAndUpdate(ctx, f, u, opt).Decode(&versionDoc); err != nil {
+		return fmt.Errorf(`failed to generete new version: [filter: %v, update: %v, error: %w]`, f, u, err)
 	}
 	doc.Version = versionDoc.Version
 	if doc.ID == "" {
