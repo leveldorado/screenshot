@@ -18,7 +18,7 @@ import (
 )
 
 type FlagOptions struct {
-	Backend string `short:"b"  long:"backend" description:"address and port of screenshot backend api" default:"localhost:9000" env:"SCREENSHOT_BACKEND"`
+	Backend string `short:"b"  long:"backend" description:"address and port of screenshot backend api" default:"http://localhost:9000" env:"SCREENSHOT_BACKEND"`
 	URLs    string `short:"u" long:"urls" description:"list of urls for screenshoting separated by ;"`
 	File    string `short:"f" long:"file" description:"path to file with list of urls"`
 }
@@ -77,7 +77,7 @@ func (c *Command) MakeScreenShotsAndPrintResult(urls []string) error {
 	if err := json.NewEncoder(buff).Encode(api.MakeShotsRequest{URLs: urls}); err != nil {
 		return fmt.Errorf(`failed to encode request: [urls: %+v, errror: %w]`, urls, err)
 	}
-	req, err := http.NewRequest(http.MethodPost, api.ScreenshotPath, buff)
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf(`%s%s`, c.serverAddr, api.ScreenshotPath), buff)
 	if err != nil {
 		return fmt.Errorf(`failed to request request: [path: %s, method: %s, error: %w]`, api.ScreenshotVersionsPath, http.MethodPost, err)
 	}
@@ -92,7 +92,7 @@ func (c *Command) MakeScreenShotsAndPrintResult(urls []string) error {
 		return fmt.Errorf(`received not successfull response code: [code: %s, response: %s]`, resp.Status, data)
 	}
 	var list []api.ResponseItem
-	if err = json.NewDecoder(resp.Body).Decode(&resp); err != nil {
+	if err = json.NewDecoder(resp.Body).Decode(&list); err != nil {
 		return fmt.Errorf(`failed to decode response: [error: %w]`, err)
 	}
 	for _, el := range list {

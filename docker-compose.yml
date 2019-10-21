@@ -4,15 +4,15 @@ services:
   db:
     image: mongo
     ports:
-      - 27017
+      - "27017:27017"
   queue:
     image: nats
     ports:
-      - 4222
+      - "4222:4222"
   chrome:
     image: zenika/alpine-chrome
     ports:
-      - 9222
+      - "9222:9222"
     command: --no-sandbox --remote-debugging-address=0.0.0.0 --remote-debugging-port=9222
   capture:
     image: leveldorado/screenshot
@@ -20,7 +20,7 @@ services:
       - db
       - queue
       - chrome
-    command: ./screenshot --database=mongo:27017 --queue=nats://nats:4222 --mode=capture --chrome=localhost:9222
+    command: ./screenshot --database=mongodb://db:27017 --queue=nats://queue:4222 --mode=capture --chrome=http://chrome:9222
   api:
     image: leveldorado/screenshot
     depends_on:
@@ -28,5 +28,5 @@ services:
       - queue
       - db
     ports:
-      - 9000
-    command: ./screenshot --database=mongo:27017 --queue=nats://nats:4222 --mode=api --address=:9000
+      - "9000:9000"
+    command: ./screenshot --database=mongodb://db:27017 --queue=nats://queue:4222 --mode=api --address=:9000

@@ -4,20 +4,19 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
-	"github.com/labstack/echo"
-
 	"github.com/google/uuid"
-
-	"github.com/stretchr/testify/mock"
-
+	"github.com/labstack/echo"
 	"github.com/leveldorado/screenshot/store"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 type mockService struct {
@@ -34,6 +33,42 @@ func (m *mockService) GetScreenshot(ctx context.Context, url string, version int
 func (m *mockService) GetScreenshotVersions(ctx context.Context, url string) ([]store.Metadata, error) {
 	args := m.Called(ctx, url)
 	return args.Get(0).([]store.Metadata), args.Error(1)
+}
+
+func TestHTTPHandlerGetScreenshotVersions(t *testing.T) {
+	s := &mockService{}
+	url := uuid.New().String()
+	response := []store.Metadata{{ID: uuid.New().String(), Url: url, Format: "jpeg", Version: 13}}
+	s.On("GetScreenshotVersions", mock.Anything, url).Return(response, nil)
+	h := NewHTTPHandler(s, "address")
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf(`%s?url=%s`, ScreenshotVersionsPath, url), nil)
+	resp := httptest.NewRecorder()
+	ctx := h.server.NewContext(req, resp)
+	require.NoError(t, h.getScreenshotVersions(ctx))
+	require.Equal(t, http.StatusOK, resp.Code)
+	var actualResponse []store.Metadata
+	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &actualResponse))
+	require.Equal(t, response, actualResponse)
+	s.AssertExpectations(t)
+}
+
+func TestHTTPHandlerGetScreenshot(t *testing.T) {
+	s := &mockService{}
+	url := uuid.New().String()
+	version := 2
+	data := uuid.New().String()
+	file := ioutil.NopCloser(strings.NewReader(data))
+	contentType := "image/jpeg"
+	s.On("GetScreenshot", mock.Anything, url, version).Return(file, contentType, nil)
+	h := NewHTTPHandler(s, "address")
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf(`%s?url=%s&version=%d`, ScreenshotPath, url, version), nil)
+	resp := httptest.NewRecorder()
+	ctx := h.server.NewContext(req, resp)
+	require.NoError(t, h.getScreenshot(ctx))
+	require.Equal(t, http.StatusOK, resp.Code)
+	require.Equal(t, contentType, resp.Header().Get(echo.HeaderContentType))
+	require.Equal(t, data, resp.Body.String())
+	s.AssertExpectations(t)
 }
 
 func TestHTTPHandlerMakeShots(t *testing.T) {
@@ -54,4 +89,5 @@ func TestHTTPHandlerMakeShots(t *testing.T) {
 	var actualResponse []ResponseItem
 	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &actualResponse))
 	require.Equal(t, response, actualResponse)
+	s.AssertExpectations(t)
 }

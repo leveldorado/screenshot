@@ -102,7 +102,7 @@ func (m *MongodbMetadataRepo) GetAllVersions(ctx context.Context, url string) ([
 	q := bson.M{"url": url}
 	res, err := m.db.Collection(m.metadataCollection).Find(ctx, q)
 	if err != nil {
-		return nil, fmt.Errorf(`failed to find dockuments: [q: %+v, collection_name: %s, error: %w]`, q, m.metadataCollection, err)
+		return nil, fmt.Errorf(`failed to find documents: [q: %v, collection_name: %s, error: %w]`, q, m.metadataCollection, err)
 	}
 	if err = res.All(ctx, &list); err != nil {
 		return nil, fmt.Errorf(`failed to decode result: [error: %w]`, err)

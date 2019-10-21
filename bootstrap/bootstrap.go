@@ -61,6 +61,9 @@ func getFileAndMetadataStore(ctx context.Context, url string, c config) (*store.
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to create client: [opt: %+v, error: %w]`, opt, err)
 	}
+	if err := cl.Connect(ctx); err != nil {
+		return nil, nil, fmt.Errorf(`failed to connect mongodb: [error: %w]`, err)
+	}
 	fs, err := store.NewMongodbGridFSFileRepo(ctx, cl, c.Database.Name)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed create mongodb gridfs repo: [database: %s, error: %w]`, c.Database.Name, err)

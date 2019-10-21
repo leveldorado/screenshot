@@ -89,7 +89,7 @@ func (s *DefaultService) makeShot(ctx context.Context, url string, respChan chan
 		respChan <- ResponseItem{URL: url, Error: fmt.Sprintf(`failed to unmarshal shot response: [data: %s, error: %s]`, msg.Data, err)}
 		return
 	}
-	respChan <- ResponseItem{URL: url, Success: true}
+	respChan <- ResponseItem{URL: url, Success: resp.Success, Error: resp.Error}
 }
 
 func (s *DefaultService) GetScreenshot(ctx context.Context, url string, version int) (file io.ReadCloser, contentType string, err error) {
