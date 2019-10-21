@@ -13,7 +13,7 @@ RUN go mod download
 COPY . .
 
 # Build the Go app
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o screenshot .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o screenshot ./cmd/screenshot
 
 
 ######## Start a new stage from scratch #######

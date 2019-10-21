@@ -16,12 +16,12 @@ const (
 )
 
 func main() {
-	r, err := bootstrap.Build(os.Args)
+	ctx, cancel := context.WithCancel(context.Background())
+	r, err := bootstrap.Build(ctx, os.Args)
 	if err != nil {
 		log.Println(fmt.Sprintf("failed to build runner: [error: %s]", err))
 		os.Exit(1)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
 	if err := r.Run(ctx); err != nil {
 		log.Println(fmt.Sprintf("failed to run runner: [error: %s]", err))
 		os.Exit(1)
