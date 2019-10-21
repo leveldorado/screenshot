@@ -3,11 +3,29 @@ package bootstrap
 import (
 	"fmt"
 	"io/ioutil"
+	"time"
 
 	"gopkg.in/yaml.v2"
 )
 
 type config struct {
+	Queue struct {
+		BufferSize           int           `yaml:"buffer_size"`
+		ConnectTimeout       time.Duration `yaml:"connect_timeout"`
+		HandleMessageTimeout time.Duration `yaml:"handle_message_timeout"`
+		WaitReplyTimeout     time.Duration `yaml:"wait_reply_timeout"`
+	} `yaml:"queue"`
+	Database struct {
+		Name        string `yaml:"name"`
+		Collections struct {
+			Metadata       string `yaml:"metadata"`
+			VersionCounter string `yaml:"version_counter"`
+		} `yaml:"collections"`
+	} `yaml:"database"`
+	Screenshot struct {
+		Format  string `yaml:"format"`
+		Quality int    `yaml:"quality"`
+	} `yaml:"screenshot"`
 }
 
 func readConfig(path string) (config, error) {

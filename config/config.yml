@@ -1,0 +1,13 @@
+queue:
+  buffer_size: 10
+  connect_timeout: 5s
+  handle_message_timeout: 10s
+  wait_reply_timeout: 10s
+database:
+  name: screenshot
+  collections:
+    metadata: metadata
+    version_counter: version_counter
+screenshot:
+  format: jpeg
+  quality: 80

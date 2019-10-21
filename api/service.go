@@ -17,7 +17,7 @@ import (
 )
 
 type fileGetter interface {
-	Get(ctx context.Context, fileID string) (io.Reader, error)
+	Get(ctx context.Context, fileID string) (io.ReadCloser, error)
 }
 
 type metadataGetter interface {
@@ -31,10 +31,19 @@ type subscriberPublisher interface {
 }
 
 type DefaultService struct {
-	fg              fileGetter
-	mg              metadataGetter
-	q               subscriberPublisher
-	responseTimeout time.Duration
+	fg               fileGetter
+	mg               metadataGetter
+	q                subscriberPublisher
+	waitReplyTimeout time.Duration
+}
+
+func NewDefaultService(fg fileGetter, mg metadataGetter, q subscriberPublisher, waitReplyTimeout time.Duration) *DefaultService {
+	return &DefaultService{
+		fg:               fg,
+		mg:               mg,
+		q:                q,
+		waitReplyTimeout: waitReplyTimeout,
+	}
 }
 
 type ResponseItem struct {
@@ -62,7 +71,7 @@ func (s *DefaultService) makeShot(ctx context.Context, url string, respChan chan
 		respChan <- ResponseItem{URL: url, Error: fmt.Sprintf(`failed to publish shot request: [req: %+v, error: %s]`, req, err)}
 		return
 	}
-	ctx, cancel := context.WithTimeout(ctx, s.responseTimeout)
+	ctx, cancel := context.WithTimeout(ctx, s.waitReplyTimeout)
 	sub, err := s.q.Subscribe(ctx, reply)
 	if err != nil {
 		respChan <- ResponseItem{URL: url, Error: fmt.Sprintf(`failed to subscribe shot response: [reply: %s, error: %s]`, reply, err)}
@@ -83,7 +92,7 @@ func (s *DefaultService) makeShot(ctx context.Context, url string, respChan chan
 	respChan <- ResponseItem{URL: url, Success: true}
 }
 
-func (s *DefaultService) GetScreenshot(ctx context.Context, url string, version int) (file io.Reader, contentType string, err error) {
+func (s *DefaultService) GetScreenshot(ctx context.Context, url string, version int) (file io.ReadCloser, contentType string, err error) {
 	var m store.Metadata
 	if version == 0 {
 		versions, err := s.mg.GetAllVersions(ctx, url)

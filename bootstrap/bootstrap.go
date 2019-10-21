@@ -4,9 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/leveldorado/screenshot/api"
+	"github.com/leveldorado/screenshot/store"
 
+	"github.com/leveldorado/screenshot/api"
 	"github.com/leveldorado/screenshot/capture"
+	"github.com/leveldorado/screenshot/queue"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type runner interface {
@@ -14,7 +18,7 @@ type runner interface {
 	Stop(ctx context.Context) error
 }
 
-func Build(args []string) (runner, error) {
+func Build(ctx context.Context, args []string) (runner, error) {
 	opt, err := parseFlags(args)
 	if err != nil {
 		return nil, fmt.Errorf(`failed to parse args: [args: %+v, error: %w]`, args, err)
@@ -23,21 +27,46 @@ func Build(args []string) (runner, error) {
 	if err != nil {
 		return nil, fmt.Errorf(`failed to read config: [path: %s, error: %w]`, opt.ConfigPath, err)
 	}
+	nats, err := queue.NewNATS(opt.Queue, c.Queue.BufferSize, c.Queue.ConnectTimeout)
+	if err != nil {
+		return nil, fmt.Errorf(`failed to create nats: [addr: %s, error: %w]`, opt.Queue, err)
+	}
+	fs, ms, err := getFileAndMetadataStore(ctx, opt.Database, c)
+	if err != nil {
+		return nil, err
+	}
 	switch opt.Mode {
 	case modeAPI:
-		return buildAPI(c, opt)
+		return buildAPI(c, opt, nats, fs, ms)
 	case modeCapture:
-		return buildCapture(c, opt)
+		return buildCapture(ctx, c, opt, nats, fs, ms)
 	case modeStandalone:
-		apiH, err := buildAPI(c, opt)
+		apiH, err := buildAPI(c, opt, nats, fs, ms)
 		if err != nil {
 			return nil, err
 		}
-		captureH, err := buildCapture(c, opt)
+		captureH, err := buildCapture(ctx, c, opt, nats, fs, ms)
 		return combinedRunner{parts: []runner{apiH, captureH}}, err
 	default:
 		return nil, fmt.Errorf(`unsupported mode %s. please use one of (standalone, api, capture)`, opt.Mode)
 	}
+}
+
+func getFileAndMetadataStore(ctx context.Context, url string, c config) (*store.MongodbGridFSFileRepo, *store.MongodbMetadataRepo, error) {
+	opt := options.Client().ApplyURI(url)
+	if err := opt.Validate(); err != nil {
+		return nil, nil, fmt.Errorf(`invalid url: [url: %s, error: %w]`, url, err)
+	}
+	cl, err := mongo.NewClient(opt)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to create client: [opt: %+v, error: %w]`, opt, err)
+	}
+	fs, err := store.NewMongodbGridFSFileRepo(ctx, cl, c.Database.Name)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed create mongodb gridfs repo: [database: %s, error: %w]`, c.Database.Name, err)
+	}
+	ms := store.NewMongodbMetadataRepo(cl, c.Database.Name, c.Database.Collections.Metadata, c.Database.Collections.VersionCounter)
+	return fs, ms, nil
 }
 
 type combinedRunner struct {
@@ -62,10 +91,14 @@ func (cr combinedRunner) Stop(ctx context.Context) error {
 	return nil
 }
 
-func buildCapture(c config, opt options) (*capture.QueueSubscriptionHandler, error) {
-	return &capture.QueueSubscriptionHandler{}, nil
+func buildCapture(ctx context.Context, c config, opt flagOptions, nats *queue.NATS, fs *store.MongodbGridFSFileRepo, ms *store.MongodbMetadataRepo) (*capture.QueueSubscriptionHandler, error) {
+	sh, err := capture.NewChromeShotMaker(ctx, opt.Chrome)
+	if err != nil {
+		return nil, fmt.Errorf(`failed create chrome shot maker: [url: %s, error: %w]`, opt.Chrome, err)
+	}
+	return capture.NewQueueSubscriptionHandler(capture.NewDefaultService(sh, fs, ms, c.Screenshot.Format, c.Screenshot.Quality), nats, c.Queue.HandleMessageTimeout), nil
 }
 
-func buildAPI(c config, opt options) (*api.HTTPHandler, error) {
-	return &api.HTTPHandler{}, nil
+func buildAPI(c config, opt flagOptions, nats *queue.NATS, fs *store.MongodbGridFSFileRepo, ms *store.MongodbMetadataRepo) (*api.HTTPHandler, error) {
+	return api.NewHTTPHandler(api.NewDefaultService(fs, ms, nats, c.Queue.WaitReplyTimeout), opt.Address), nil
 }

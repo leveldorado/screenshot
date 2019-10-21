@@ -28,6 +28,10 @@ type HTTPHandler struct {
 	address string
 }
 
+func NewHTTPHandler(s service, addr string) *HTTPHandler {
+	return &HTTPHandler{s: s, address: addr}
+}
+
 func (h *HTTPHandler) Run(ctx context.Context) error {
 	h.server = echo.New()
 	h.server.Use(middleware.Recover())
@@ -45,10 +49,15 @@ func (h *HTTPHandler) Stop(ctx context.Context) error {
 	return h.server.Shutdown(ctx)
 }
 
+const (
+	ScreenshotPath         = "/api/v1/screenshot"
+	ScreenshotVersionsPath = "/api/v1/screenshot/versions"
+)
+
 func (h *HTTPHandler) registerEndpoints(e *echo.Echo) {
-	e.POST("/api/v1/screenshot", h.makeShots)
-	e.GET("/api/v1/screenshot", h.getScreenshot)
-	e.GET("/api/v1/screenshot/versions", h.getScreenshotVersions)
+	e.POST(ScreenshotPath, h.makeShots)
+	e.GET(ScreenshotPath, h.getScreenshot)
+	e.GET(ScreenshotVersionsPath, h.getScreenshotVersions)
 }
 
 type MakeShotsRequest struct {

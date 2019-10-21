@@ -13,7 +13,7 @@ type MongodbGridFSFileRepo struct {
 	bucket *gridfs.Bucket
 }
 
-func NewMongodbGridFSFileRepo(ctx context.Context, cl *mongo.Client, databaseName, bucketName string) (*MongodbGridFSFileRepo, error) {
+func NewMongodbGridFSFileRepo(ctx context.Context, cl *mongo.Client, databaseName string) (*MongodbGridFSFileRepo, error) {
 	bucket, err := gridfs.NewBucket(cl.Database(databaseName))
 	if err != nil {
 		return nil, fmt.Errorf(`failed to create gridfs bucket: [database: %s, error: %w]`, databaseName, err)
