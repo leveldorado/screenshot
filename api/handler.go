@@ -117,5 +117,5 @@ func (h HTTPHandler) getScreenshotVersions(ctx echo.Context) error {
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: err.Error()})
 	}
-	return ctx.JSON(http.StatusOK, resp)
+	return ctx.JSONPretty(http.StatusOK, resp, " ")
 }
