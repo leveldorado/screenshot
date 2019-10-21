@@ -24,8 +24,8 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 
 # Copy the Pre-built binary file from the previous stage
-COPY --from=builder /app/output .
+COPY --from=builder /app/screenshot .
 
 EXPOSE 9000
 
-CMD ["./output"]
+CMD ["./screenshot"]
