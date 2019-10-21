@@ -22,6 +22,11 @@ type service interface {
 	GetScreenshotVersions(ctx context.Context, url string) ([]store.Metadata, error)
 }
 
+type httpServer interface {
+	Start(addr string) error
+	Shutdown(ctx context.Context) error
+}
+
 type HTTPHandler struct {
 	server  *echo.Echo
 	s       service
@@ -29,13 +34,14 @@ type HTTPHandler struct {
 }
 
 func NewHTTPHandler(s service, addr string) *HTTPHandler {
-	return &HTTPHandler{s: s, address: addr}
+	e := echo.New()
+	e.Use(middleware.Recover())
+	h := &HTTPHandler{s: s, address: addr, server: e}
+	h.registerEndpoints()
+	return h
 }
 
 func (h *HTTPHandler) Run(ctx context.Context) error {
-	h.server = echo.New()
-	h.server.Use(middleware.Recover())
-	h.registerEndpoints(h.server)
 	go func() {
 		if err := h.server.Start(h.address); err != nil {
 			log.Println(fmt.Sprintf(`failed to start http server on address %s with error: %s`, h.address, err))
@@ -54,10 +60,10 @@ const (
 	ScreenshotVersionsPath = "/api/v1/screenshot/versions"
 )
 
-func (h *HTTPHandler) registerEndpoints(e *echo.Echo) {
-	e.POST(ScreenshotPath, h.makeShots)
-	e.GET(ScreenshotPath, h.getScreenshot)
-	e.GET(ScreenshotVersionsPath, h.getScreenshotVersions)
+func (h *HTTPHandler) registerEndpoints() {
+	h.server.POST(ScreenshotPath, h.makeShots)
+	h.server.GET(ScreenshotPath, h.getScreenshot)
+	h.server.GET(ScreenshotVersionsPath, h.getScreenshotVersions)
 }
 
 type MakeShotsRequest struct {

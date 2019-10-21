@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/labstack/echo"
+
 	"github.com/jessevdk/go-flags"
 
 	"github.com/leveldorado/screenshot/api"
@@ -79,7 +81,7 @@ func (c *Command) MakeScreenShotsAndPrintResult(urls []string) error {
 	if err != nil {
 		return fmt.Errorf(`failed to request request: [path: %s, method: %s, error: %w]`, api.ScreenshotVersionsPath, http.MethodPost, err)
 	}
-	req.Header.Set("Content-type", "application/json")
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	resp, err := c.cl.Do(req)
 	if err != nil {
 		return fmt.Errorf(`failed to do request: [url: %s, error: %w]`, req.URL, err)

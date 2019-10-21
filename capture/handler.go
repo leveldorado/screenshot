@@ -72,15 +72,19 @@ func (h *QueueSubscriptionHandler) subscribeTopic(ctx context.Context, topic str
 	}
 	go func() {
 		for msg := range sub {
-			//TODO handle context timeout
-			msgCtx, _ := context.WithTimeout(context.Background(), h.requestTimeout)
-			resp := mh(msgCtx, msg.Data)
-			if err := h.q.Reply(msgCtx, msg.Reply, resp); err != nil {
-				log.Println(fmt.Sprintf(`failed to publish reply: [topic: %s, reply: %s, resp: %+v, error: %s]`, topic, msg.Reply, resp, err))
-			}
+			go h.handleMessage(topic, msg, mh)
 		}
 	}()
 	return nil
+}
+
+func (h *QueueSubscriptionHandler) handleMessage(topic string, msg queue.Message, mh messageHandler) {
+	//TODO handle context timeout
+	msgCtx, _ := context.WithTimeout(context.Background(), h.requestTimeout)
+	resp := mh(msgCtx, msg.Data)
+	if err := h.q.Reply(msgCtx, msg.Reply, resp); err != nil {
+		log.Println(fmt.Sprintf(`failed to publish reply: [topic: %s, reply: %s, resp: %+v, error: %s]`, topic, msg.Reply, resp, err))
+	}
 }
 
 func (h *QueueSubscriptionHandler) makeShotAndSave(ctx context.Context, msg []byte) interface{} {
