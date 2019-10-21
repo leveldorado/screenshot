@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -13,6 +14,7 @@ func main() {
 		log.Println(err.Error())
 		os.Exit(1)
 	}
+	fmt.Println("URLS", opt.URLs, os.Args)
 	cm := screenshotctl.NewCommand(opt.Backend)
 	urls, err := opt.ExtractURLs()
 	if err != nil {

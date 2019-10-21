@@ -35,16 +35,11 @@ func Build(ctx context.Context, args []string) (runner, error) {
 	}
 	switch opt.Mode {
 	case modeAPI:
-		return buildAPI(c, opt, nats, fs, ms)
+		return buildAPI(c, opt, nats, fs, ms), nil
 	case modeCapture:
-		return buildCapture(ctx, c, opt, nats, fs, ms)
+		return buildCapture(ctx, c, opt, nats, fs, ms), nil
 	case modeStandalone:
-		apiH, err := buildAPI(c, opt, nats, fs, ms)
-		if err != nil {
-			return nil, err
-		}
-		captureH, err := buildCapture(ctx, c, opt, nats, fs, ms)
-		return combinedRunner{parts: []runner{apiH, captureH}}, err
+		return combinedRunner{parts: []runner{buildAPI(c, opt, nats, fs, ms), buildCapture(ctx, c, opt, nats, fs, ms)}}, err
 	default:
 		return nil, fmt.Errorf(`unsupported mode %s. please use one of (standalone, api, capture)`, opt.Mode)
 	}
@@ -88,14 +83,12 @@ func (cr combinedRunner) Stop(ctx context.Context) error {
 	return nil
 }
 
-func buildCapture(ctx context.Context, c config, opt flagOptions, nats *queue.NATS, fs *store.MongodbGridFSFileRepo, ms *store.MongodbMetadataRepo) (*capture.QueueSubscriptionHandler, error) {
-	sh, err := capture.NewChromeShotMaker(ctx, opt.Chrome)
-	if err != nil {
-		return nil, fmt.Errorf(`failed create chrome shot maker: [url: %s, error: %w]`, opt.Chrome, err)
-	}
-	return capture.NewQueueSubscriptionHandler(capture.NewDefaultService(sh, fs, ms, c.Screenshot.Format, c.Screenshot.Quality), nats, c.Queue.HandleMessageTimeout), nil
+func buildCapture(ctx context.Context, c config, opt flagOptions, nats *queue.NATS, fs *store.MongodbGridFSFileRepo, ms *store.MongodbMetadataRepo) *capture.QueueSubscriptionHandler {
+	sh := capture.NewChromeShotMaker(opt.Chrome)
+	s := capture.NewDefaultService(sh, fs, ms, c.Screenshot.Format, c.Screenshot.Quality)
+	return capture.NewQueueSubscriptionHandler(s, nats, c.Queue.HandleMessageTimeout)
 }
 
-func buildAPI(c config, opt flagOptions, nats *queue.NATS, fs *store.MongodbGridFSFileRepo, ms *store.MongodbMetadataRepo) (*api.HTTPHandler, error) {
-	return api.NewHTTPHandler(api.NewDefaultService(fs, ms, nats, c.Queue.WaitReplyTimeout), opt.Address), nil
+func buildAPI(c config, opt flagOptions, nats *queue.NATS, fs *store.MongodbGridFSFileRepo, ms *store.MongodbMetadataRepo) *api.HTTPHandler {
+	return api.NewHTTPHandler(api.NewDefaultService(fs, ms, nats, c.Queue.WaitReplyTimeout), opt.Address)
 }

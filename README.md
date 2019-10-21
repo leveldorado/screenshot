@@ -28,6 +28,7 @@ Scaling notes:
   
   storage scaling depends on mongodb scaling features like replication and sharding
   
+  
 usage:<br>
   api:<br>
      
@@ -61,4 +62,4 @@ to build client (expected golang installed (go1.13)): <br>
        
    client usage:<br>
       
-      ./screenshot --backend=http://localhost:9000 --urls=http://google.com;http://facebook.com
+      ./screenshot --backend=http://localhost:9000 --urls="http://google.com;http://facebook.com"
