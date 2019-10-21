@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const ScreenshotTestNATSAddressEnvVariable = "SCREENSHOT_TEST_NATS"
+const testNATSAddressEnvVariable = "SCREENSHOT_TEST_NATS"
 
 func TestNATS_Subscribe(t *testing.T) {
-	address := os.Getenv(ScreenshotTestNATSAddressEnvVariable)
+	address := os.Getenv(testNATSAddressEnvVariable)
 	n, err := NewNATS(address, 10, time.Second)
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())

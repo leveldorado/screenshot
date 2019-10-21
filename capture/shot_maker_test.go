@@ -10,10 +10,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const ScreenshotTestChromeAddressEnvVariable = "SCREENSHOT_TEST_CHROME"
+const testChromeAddressEnvVariable = "SCREENSHOT_TEST_CHROME"
 
 func TestChromeShotMaker_MakeShot(t *testing.T) {
-	address := os.Getenv(ScreenshotTestChromeAddressEnvVariable)
+	address := os.Getenv(testChromeAddressEnvVariable)
 	sm := NewChromeShotMaker(address)
 	go func() {
 		image, err := sm.MakeShot(context.Background(), "http://facebook.com", "jpeg", 80)

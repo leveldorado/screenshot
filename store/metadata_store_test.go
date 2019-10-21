@@ -7,16 +7,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-
 	"github.com/stretchr/testify/require"
 )
 
 const (
-	ScreenshotTestDatabaseEnvVariable = "SCREENSHOT_TEST_DATABASE"
+	testDatabaseEnvVariable = "SCREENSHOT_TEST_DATABASE"
 )
 
 func TestMongodbMetadataRepo_Save(t *testing.T) {
-	address := os.Getenv(ScreenshotTestDatabaseEnvVariable)
+	address := os.Getenv(testDatabaseEnvVariable)
 	cl, err := BuildMongoClient(context.Background(), address)
 	require.NoError(t, err)
 	repo := NewMongodbMetadataRepo(cl, "test", "metadata", "versions")
