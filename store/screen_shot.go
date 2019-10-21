@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"go.mongodb.org/mongo-driver/mongo/options"
+
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/mongo"
 	"gopkg.in/mgo.v2/bson"
@@ -65,10 +67,12 @@ func (m *MongodbMetadataRepo) Save(ctx context.Context, doc *Metadata) error {
 		ID      string `bson:"_id"`
 		Version int    `bson:"version"`
 	}{}
-	if err := m.db.Collection(m.versionCounterCollection).
-		FindOneAndUpdate(ctx, bson.M{"_id": doc.Url}, bson.M{"$inc": bson.M{"version": 1}}).
-		Decode(versionDoc); err != nil {
-		return fmt.Errorf(`failed to generete new version: [id: %s, error: %w]`, doc.Url, err)
+	f := bson.M{"_id": doc.Url}
+	u := bson.M{"$inc": bson.M{"version": 1}}
+	t := true
+	opt := &options.FindOneAndUpdateOptions{Upsert: &t}
+	if err := m.db.Collection(m.versionCounterCollection).FindOneAndUpdate(ctx, f, u, opt).Decode(versionDoc); err != nil {
+		return fmt.Errorf(`failed to generete new version: [filter: %v, update: %v, opt: %+v, error: %w]`, f, u, opt, err)
 	}
 	doc.Version = versionDoc.Version
 	if doc.ID == "" {

@@ -44,7 +44,7 @@ usage:<br>
 
   screenshotctl: <br>
        
-       ./screenshotctl --backend=http://localhost:9000 --urls=google.com;facebook.com
+       ./screenshotctl --backend=http://localhost:9000 --urls=http://google.com;http://facebook.com
        
 
 to try it just run <br>
@@ -61,4 +61,4 @@ to build client (expected golang installed (go1.13)): <br>
        
    client usage:<br>
       
-      ./screenshot --backend=http://localhost:9000 --urls=google.com;facebook.com
+      ./screenshot --backend=http://localhost:9000 --urls=http://google.com;http://facebook.com
