@@ -45,3 +45,20 @@ usage:<br>
   screenshotctl: <br>
        
        ./screenshotctl --backend=localhost:9000 --urls=google.com;facebook.com
+       
+
+to try it just run <br>
+        
+        docker-compose up 
+        
+in root of repo. Expected that docker-compose installed on machine (https://docs.docker.com/compose/install/)   
+
+above command will up server side with dependencies
+
+to build client (expected golang installed (go1.13)): <br>
+    
+       go mod download  && go build -o screenshot  ./screenshotctl/cmd/screenshotctl 
+       
+   client usage:<br>
+      
+      ./screenshot --backend=localhost:9000 --urls=google.com;facebook.com

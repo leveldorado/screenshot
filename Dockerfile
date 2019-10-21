@@ -26,6 +26,10 @@ WORKDIR /root/
 # Copy the Pre-built binary file from the previous stage
 COPY --from=builder /app/screenshot .
 
+# Copy config file
+COPY config/config.yml .
+
+
 EXPOSE 9000
 
 CMD ["./screenshot"]

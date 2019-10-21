@@ -13,7 +13,7 @@ const (
 )
 
 type flagOptions struct {
-	ConfigPath string `short:"c" long:"config" description:"Path to config file" default:"./config/config.yml"`
+	ConfigPath string `short:"c" long:"config" description:"Path to config file" default:"config.yml"`
 	Queue      string `short:"q" long:"queue" description:"queue connect url" default:"nats://localhost:4222"`
 	Database   string `short:"d" long:"database" description:"database connect url" default:"localhost:27017"`
 	Chrome     string `long:"chrome" description:"headless chrome url" default:"localhost:9222"`
