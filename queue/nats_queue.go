@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -72,8 +73,10 @@ func (n *NATS) consumeSubscription(ctx context.Context, topic string, sub *nats.
 		for {
 			msg, err := sub.NextMsgWithContext(ctx)
 			if err != nil {
-				//TODO pass logger as dependence
-				log.Println(fmt.Sprintf(`failed get next message for topic %s: with error: %s`, topic, err))
+				if !errors.Is(err, context.Canceled) {
+					//TODO pass logger as dependence
+					log.Println(fmt.Sprintf(`failed get next message for topic %s: with error: %s`, topic, err))
+				}
 				close(c)
 				return
 			}

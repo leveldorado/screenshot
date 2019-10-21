@@ -32,20 +32,20 @@ Scaling notes:
 usage:<br>
   api:<br>
      
-     ./screenshot --address=:9000 --queue=nats://localhost:4222 --database=localhost:27017 --mode=api
+     ./screenshot --address=:9000 --queue=nats://localhost:4222 --database=mongodb://localhost:27017 --mode=api
     
   capture: <br>
       
-      ./screenshot --queue=nats://localhost:4222 --database=localhost:27017 --chrome=localhost:9222 --mode=capture
+      ./screenshot --queue=nats://localhost:4222 --database=mongodb://localhost:27017 --chrome=http://localhost:9222 --mode=capture
       
   standlone:<br>
   
-       ./screenshot --address=:9000 --queue=nats://localhost:4222 --database=localhost:27017 --chrome=localhost:9222 --mode=standalone    
+       ./screenshot --address=:9000 --queue=nats://localhost:4222 --database=mongodb://localhost:27017 --chrome=http://localhost:9222 --mode=standalone    
           
 
   screenshotctl: <br>
        
-       ./screenshotctl --backend=http://localhost:9000 --urls=http://google.com;http://facebook.com
+       ./screenshotctl --backend=http://localhost:9000 --urls="http://google.com;http://facebook.com"
        
 
 to try it just run <br>
@@ -63,3 +63,11 @@ to build client (expected golang installed (go1.13)): <br>
    client usage:<br>
       
       ./screenshot --backend=http://localhost:9000 --urls="http://google.com;http://facebook.com"
+      ./screenshot --backend=http://localhost:9000 -f={path to file with urls}
+      export SCREENSHOT_BACKEND=http://localhost:9000 && ./screenshot -f={path to file with urls}
+      
+      
+testing: repo contains codeship files, so to test can be executed with required dependencies via jet cli  https://documentation.codeship.com/pro/jet-cli/installation/
+
+      jet-cli steps    
+      

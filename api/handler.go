@@ -70,6 +70,19 @@ type MakeShotsRequest struct {
 	URLs []string `json:"urls"`
 }
 
+func (req MakeShotsRequest) getUniqueUrls() []string {
+	m := map[string]struct{}{}
+	var unique []string
+	for _, url := range req.URLs {
+		if _, ok := m[url]; ok {
+			continue
+		}
+		m[url] = struct{}{}
+		unique = append(unique, url)
+	}
+	return unique
+}
+
 type ErrorResponse struct {
 	Message string
 }
@@ -79,7 +92,7 @@ func (h HTTPHandler) makeShots(ctx echo.Context) error {
 	if err := ctx.Bind(&req); err != nil {
 		return ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: err.Error()})
 	}
-	response := h.s.MakeShots(ctx.Request().Context(), req.URLs)
+	response := h.s.MakeShots(ctx.Request().Context(), req.getUniqueUrls())
 	return ctx.JSON(http.StatusOK, response)
 }
 

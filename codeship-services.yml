@@ -1,0 +1,39 @@
+queue:
+  image: nats
+  cashed: true
+db:
+  image: mongo
+  cashed: true
+chrome:
+  image: zenika/alpine-chrome
+  cashed: true
+  command: --no-sandbox --remote-debugging-address=0.0.0.0 --remote-debugging-port=9222
+capture:
+  build:
+    dockerfile: Dockerfile
+  command: ./screenshot --queue=nats://queue:4222 --database=mongodb://db:27017 --chrome=http://chrome:9222 --mode=capture
+  depends_on:
+    - db
+    - chrome
+    - queue
+  cached: true
+api:
+  build:
+    dockerfile: Dockerfile
+  command: ./screenshot --database=mongodb://db:27017 --queue=nats://queue:4222 --mode=api --address=:9000
+  depends_on:
+    - db
+    - queue
+    - capture
+  cached: true
+test:
+  build:
+    dockerfile: test.Dockerfile
+  cached: true
+  environment:
+    SCREENSHOT_TEST_DATABASE: mongodb://db:27017
+    SCREENSHOT_TEST_NATS: nats://queue:4222
+    SCREENSHOT_TEST_CHROME: http://chrome:9222
+    SCREENSHOT_TEST_API: http://api:9000
+  depends_on:
+    - api
